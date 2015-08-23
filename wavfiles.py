@@ -60,6 +60,7 @@ class Silence:
         return self._length
 
     def read_all(self):
+        # Two bytes per frame
         return bytearray([0] * int(self.framerate * self.length()) * 2)
 
 
@@ -67,10 +68,10 @@ def wav_iter(files):
     """Iterate over `WavFiles` and provide `Silence` for gaps in audio"""
     i = 0
     yield files[i]
-    # the next's delta time difference with prev
     while i < len(files) - 1:
         cur = files[i]
         next = files[i + 1]
+        # Disregard subseconds since timestamp format doesn't allow for it
         delta = (next.timestamp - cur.timestamp).seconds
         if cur.length() < delta:
             yield Silence(delta - cur.length(), cur.open().getframerate())

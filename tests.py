@@ -3,6 +3,7 @@ import unittest
 from wavfiles import WavFile, Silence, wav_iter, merge
 import wave
 import os
+from functools import reduce
 
 
 class WavFileTest(unittest.TestCase):
@@ -36,12 +37,13 @@ class WavFileTest(unittest.TestCase):
 class SilenceTest(unittest.TestCase):
 
     def setUp(self):
-        self.silence = Silence(3.0, 44100)
+        self.silence = Silence(3, 44100)
 
     def test_silence(self):
-        self.assertEqual(self.silence.length(), 3.0)
+        self.assertEqual(self.silence.length(), 3)
         self.assertEqual(self.silence.framerate, 44100)
-        # Should give bytearray, not bytes. Both will work with Wave_write.
+        # Gives a bytearray, not bytes. Both have buffer interface and will
+        # work with Wave_write.
         self.assertEqual(type(self.silence.read_all()), bytearray)
 
 
@@ -65,8 +67,20 @@ class MainTest(unittest.TestCase):
         merge(self.left, self.lname)
         self.assertTrue(os.path.isfile(self.lname))
 
+        # Ensure silence was inserted
+        no_silence = reduce(
+            lambda x, y: x + y, [wav.length() for wav in self.left])
+        with_silence = reduce(
+            lambda x, y: x + y, [wav.length() for wav in wav_iter(self.left)])
+        self.assertEqual(no_silence, 33)
+        self.assertEqual(with_silence, 38)
+
         merge(self.right, self.rname)
         self.assertTrue(os.path.isfile(self.rname))
+
+        # Right channel test audio is identical to the left with no breaks.
+        rlen = reduce(lambda x, y: x + y, [wav.length() for wav in self.right])
+        self.assertEqual(no_silence, rlen)
 
     def test_wav_iter(self):
         i = 0
