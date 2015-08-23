@@ -1,8 +1,9 @@
-# AudioFiles
-To run:
+# WavFiles
+Compatible with python 2.7/3.4
 
 ```
-./audiofiles.py
+./wavfiles.py
+./tests.py
 ```
 
 [Source audio](https://soundcloud.com/buzzfeednews/oncleekenotfleek)

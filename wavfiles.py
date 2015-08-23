@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import re
 import wave
 import os
@@ -8,12 +8,12 @@ from datetime import datetime
 class WavFile:
 
     """
-    Represents a WAV file and provides convenience methods for `wave`.
+    Provides convenience methods for `wave` operations.
     """
 
     def __init__(self, location):
-        matches = re.match(r'.+?([NF])(\d{14})\.wav$',
-                           location)
+        """Ensure wav filname is parsable and set class properties"""
+        matches = re.match(r'.+?([NF])(\d{14})\.wav$', location)
 
         if not matches:
             raise Exception('Filename regex failed for %s' % location)
@@ -27,15 +27,18 @@ class WavFile:
         self.channel = 'L' if ch == 'N' else 'R'
         self.timestamp = datetime.strptime(timestamp, '%Y%m%d%H%M%S')
 
-    def open(self, mode):
-        return wave.open(self.location, mode)
+    def open(self):
+        """Open for reading with `wave`"""
+        return wave.open(self.location, 'r')
 
     def length(self):
-        f = self.open('r')
+        """Get length in seconds"""
+        f = self.open()
         return (f.getnframes() / f.getframerate()) / f.getnchannels()
 
     def read_all(self):
-        f = self.open('r')
+        """Return all frames"""
+        f = self.open()
         frames = f.readframes(f.getnframes())
         return frames
 
@@ -46,18 +49,22 @@ class WavFile:
 class Silence:
 
     """
-    Mono Silence
+    Provides `bytearray` of zeros sized according to `self.length()`
     """
 
     def __init__(self, length, framerate):
-        self.length = length
-        self.framerate = framerate
+        self._length = length  # in seconds
+        self.framerate = framerate  # in fps
+
+    def length(self):
+        return self._length
 
     def read_all(self):
-        return bytearray([0] * int(self.framerate * self.length))
+        return bytearray([0] * int(self.framerate * self.length()))
 
 
 def wav_iter(files):
+    """Iterate over `WavFiles` and provide `Silence` for gaps in audio"""
     i = 0
     yield files[i]
     # the next's delta time difference with prev
@@ -66,14 +73,15 @@ def wav_iter(files):
         next = files[i + 1]
         delta = (next.timestamp - cur.timestamp).seconds
         if cur.length() < delta:
-            yield Silence(delta - cur.length(), cur.open('r').getframerate())
+            yield Silence(delta - cur.length(), cur.open().getframerate())
         yield next
         i = i + 1
 
 
 def merge(wav_files, output_filename):
+    """ Merge mono files in sequence """
     # Get output params from first file
-    params = wav_files[0].open('r').getparams()
+    params = wav_files[0].open().getparams()
 
     # Build output file
     output = wave.open(output_filename, 'w')
@@ -101,10 +109,6 @@ if __name__ == '__main__':
                  for f in os.listdir(audiodir) if f.endswith('.wav')]
     left = [x for x in wav_files if x.channel == 'L']
     right = [x for x in wav_files if x.channel == 'R']
-
-    # Ensure both sides are same length
-    if not sum([x.length() for x in left]) == sum([x.length() for x in right]):
-        raise Exception('Channels have unequal length')
 
     # Merge and save files
     merge(left, left_fn)

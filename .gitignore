@@ -2,3 +2,4 @@
 audio/left.wav
 audio/right.wav
 .live-archive
+__pycache__
