@@ -36,14 +36,42 @@ class WavFile:
 
     def read_all(self):
         f = self.open('r')
-        return f.readframes(f.getnframes())
+        frames = f.readframes(f.getnframes())
+        return frames
 
     def __str__(self):
         return '%s [%s] [%s]' % (self.location, self.channel, self.timestamp)
 
 
-def merge(wav_files, output_filename):
+class Silence:
 
+    """
+    Mono Silence
+    """
+
+    def __init__(self, length, framerate):
+        self.length = length
+        self.framerate = framerate
+
+    def read_all(self):
+        return bytearray([0] * int(self.framerate * self.length))
+
+
+def wav_iter(files):
+    i = 0
+    yield files[i]
+    # the next's delta time difference with prev
+    while i < len(files) - 1:
+        cur = files[i]
+        next = files[i + 1]
+        delta = (next.timestamp - cur.timestamp).seconds
+        if cur.length() < delta:
+            yield Silence(delta - cur.length(), cur.open('r').getframerate())
+        yield next
+        i = i + 1
+
+
+def merge(wav_files, output_filename):
     # Get output params from first file
     params = wav_files[0].open('r').getparams()
 
@@ -53,7 +81,7 @@ def merge(wav_files, output_filename):
 
     # Sort by timestamp and merge to output in sequence
     wav_files = sorted(wav_files, key=lambda w: w.timestamp)
-    for f in wav_files:
+    for f in wav_iter(wav_files):
         output.writeframes(f.read_all())
 
     print('Merged to %s' % output_filename)
