@@ -60,7 +60,7 @@ class Silence:
         return self._length
 
     def read_all(self):
-        return bytearray([0] * int(self.framerate * self.length()))
+        return bytearray([0] * int(self.framerate * self.length()) * 2)
 
 
 def wav_iter(files):
